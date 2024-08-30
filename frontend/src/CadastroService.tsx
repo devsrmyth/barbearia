@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
+
 import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
 import Navbar from 'react-bootstrap/Navbar';
 import Modal from 'react-bootstrap/Modal';
 import Container from 'react-bootstrap/Container';
 import FloatingLabel from 'react-bootstrap/FloatingLabel';
-import { FormGroup } from 'react-bootstrap';
+import { FormGroup, InputGroup } from 'react-bootstrap';
 import * as zod from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -27,184 +28,195 @@ interface IType {
 
 const formValidationSchema = zod.object({
     customer: zod.string().uuid(),
-    description: zod.string().nonempty({ message: 'A descrição é obrigatória' }),
-    value: zod.number().min(0, { message: 'O valor deve ser positivo' }),
-    type: zod.array(zod.boolean()),
-    payment: zod.array(zod.boolean())
-});
+    description: zod.string(),
+    value: zod.any(),
+    type: zod.boolean().array(),
+    payment: zod.boolean().array()
+})
 
-type NewCycleFormData = zod.infer<typeof formValidationSchema>;
+type NewCycleFormData = zod.infer<typeof formValidationSchema>
 
 const apiUrl = import.meta.env.VITE_REACT_APP_API_URL;
 
 export const CadastroService = () => {
-    const [customers, setCustomers] = useState<ICustomer[]>([]);
-    const [types, setTypes] = useState<IType[]>([]);
-    const payments = ["Cartão de Crédito", "Cartão de Débito", "Dinheiro", "Pix"];
-    const [show, setShow] = useState(false);
 
     useEffect(() => {
         fetch(`${apiUrl}/customer`, {
             method: 'GET',
             headers: {
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(async (response) => {
-                if (response.ok) {
-                    const json = await response.json();
-                    setCustomers(json);
-                }
-            })
-            .catch((err) => console.error('Error fetching customers:', err));
+                'Content-Type': 'application/json'
+            }
+        }).then(async (response) => {
+            if (response.status >= 200 && response.status < 300) {
+                const json = await response.json();
+                setCustomers(json);
+            }
+        }).catch(err => err);
 
         fetch(`${apiUrl}/type`, {
             method: 'GET',
             headers: {
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(async (response) => {
-                if (response.ok) {
-                    const json = await response.json();
-                    setTypes(json);
-                }
-            })
-            .catch((err) => console.error('Error fetching types:', err));
+                'Content-Type': 'application/json'
+            }
+        }).then(async (response) => {
+            if (response.status >= 200 && response.status < 300) {
+                const json = await response.json();
+                setTypes(json);
+            }
+        }).catch(err => err);
+
     }, []);
+
+    const [customers, setCustomers] = useState<ICustomer[]>([]);
+    const [types, setTypes] = useState<IType[]>([]);
+
+    const payments = ["Cartão de Crédito", "Cartão de Débito", "Dinheiro", "Pix"];
+
+    const [show, setShow] = useState(false);
 
     const handleShow = () => setShow(true);
     const handleClose = () => setShow(false);
     const handleFocus = (event: React.FocusEvent<HTMLInputElement>) => event.target.select();
 
-    const { register, handleSubmit, reset } = useForm<NewCycleFormData>({
+    const { register, handleSubmit, watch, reset } = useForm<NewCycleFormData>({
         resolver: zodResolver(formValidationSchema),
         defaultValues: {
             customer: '-1',
             value: 0,
             description: '',
-            type: Array(types.length).fill(false),
-            payment: Array(payments.length).fill(false),
+            type: [] as boolean[],
+            payment: [] as boolean[]
         },
-    });
+    })
 
-    const onSubmit = (data: NewCycleFormData) => {
+    const onSubmit = (data: any) => {
+
         fetch(`${apiUrl}/service`, {
             method: 'POST',
             body: JSON.stringify(data),
             headers: {
-                'Content-Type': 'application/json',
-            },
-        })
-            .then((response) => {
-                if (response.ok) {
-                    handleShow();
-                }
-            })
-            .catch((err) => console.error('Error submitting service:', err));
-    };
+                'Content-Type': 'application/json'
+            }
+        }).then(response => {
+            if (response.status >= 200 && response.status < 300) {
+                console.log(response);
+                handleShow();
+                return response;
+            }
+        }).catch(err => err);
+    }
 
     return (
         <div className={styles.main}>
-            <Modal
-                show={show}
-                onHide={handleClose}
-                aria-labelledby="success-modal-title"
-                aria-describedby="success-modal-description"
-            >
+            <Modal show={show} onHide={handleClose}>
                 <Modal.Header closeButton>
-                    <Modal.Title id="success-modal-title">Serviço cadastrado com sucesso!</Modal.Title>
+                    <Modal.Title>Serviço cadastrado com sucesso!</Modal.Title>
                 </Modal.Header>
-                <Modal.Body id="success-modal-description">
-                    Para ver os serviços cadastrados, vá em <strong>Serviço - Listar</strong>...
-                </Modal.Body>
+                <Modal.Body>Para ver os serviços cadastrados vamos em <strong>Serviço - Listar</strong>...</Modal.Body>
                 <Modal.Footer>
                     <Button href="/listar_servico" variant="success" onClick={handleClose}>
                         Concluir
                     </Button>
                 </Modal.Footer>
             </Modal>
-
-            <Form onSubmit={handleSubmit(onSubmit)} aria-labelledby="form-title">
-                <h1 id="form-title">Cadastro de Serviço</h1>
+            <Form onSubmit={handleSubmit(onSubmit)}>
                 <FormGroup className={styles.group}>
-                    <FloatingLabel controlId="customerInput" label="Cliente" className="mb-3">
-                        <Form.Select
-                            {...register('customer')}
-                            aria-required="true"
-                            aria-label="Selecione o cliente para o serviço"
-                        >
-                            <option value="-1">Selecione um Cliente</option>
+                    <h4>Selecione o Cliente</h4>
+                    <FloatingLabel
+                        controlId="floatingInput"
+                        label="Cliente"
+                        className="mb-3"
+
+                    >
+                        <Form.Select {...register('customer')} >
+                            <option value={"-1"}>Selecione um Cliente</option>
                             {customers.map((c: ICustomer) => (
-                                <option key={c.id} value={c.id}>
-                                    {c.name}
-                                </option>
+                                <option id={c.id} key={c.id} value={c.id}>{c.name}</option>
                             ))}
                         </Form.Select>
                     </FloatingLabel>
 
-                    <fieldset className="mb-3">
-                        <legend id="type-legend">Selecione o Tipo do Serviço</legend>
-                        {types.map((t: IType, i: number) => (
+                    <h4>Selecione o Tipo do serviço</h4>
+                    <FloatingLabel
+                        controlId="floatingInput"
+                        label=""
+                        className="mb-3"
+
+                    >
+                        {types.map((t: IType, i) => (
                             <Form.Check
                                 inline
                                 type="checkbox"
                                 key={`type-${t.id}`}
                                 id={`type-${t.id}`}
-                                label={t.title}
+                                label={`${t.title}`}
                                 {...register(`type.${i}`)}
-                                aria-labelledby="type-legend"
                             />
+
                         ))}
-                    </fieldset>
-
-                    <FloatingLabel controlId="valueInput" label="Valor do Serviço (R$)" className="mb-3" onFocus={handleFocus}>
-                        <Form.Control
-                            type="number"
-                            min="0.00"
-                            max="10000.00"
-                            step="0.01"
-                            {...register('value')}
-                            aria-required="true"
-                            aria-label="Informe o valor do serviço em reais"
-                        />
                     </FloatingLabel>
 
-                    <FloatingLabel controlId="descriptionInput" label="Descrição do Serviço" className="mb-3">
-                        <Form.Control
-                            type="text"
-                            {...register('description')}
-                            aria-required="true"
-                            aria-label="Informe a descrição do serviço"
-                        />
+                    <h4>Valor do Serviço</h4>
+                    <FloatingLabel
+                        controlId="floatingInput"
+                        label="Valor do Serviço (R$)"
+                        className="mb-3"
+                        onFocus={handleFocus}
+
+                    >
+                        <Form.Control type="number" min="0.00" max="10000.00" step="0.01" {...register("value")} />
                     </FloatingLabel>
 
-                    <fieldset className="mb-3">
-                        <legend id="payment-legend">Forma de Pagamento</legend>
-                        {payments.map((payment, i: number) => (
+                    <h4>Descrição do Serviço</h4>
+                    <FloatingLabel
+                        controlId="floatingInput"
+                        label="Descrição do Serviço"
+                        className="mb-3"
+
+                    >
+                        <Form.Control type="text" {...register("description")} />
+                    </FloatingLabel>
+
+
+                    <h4>Forma de Pagamento</h4>
+                    <FloatingLabel
+                        controlId="floatingInput"
+                        label=""
+                        className="mb-3"
+
+                    >
+
+                        {payments.map((t, i) => (
                             <Form.Check
                                 inline
                                 type="checkbox"
-                                key={`payment-${payment}`}
-                                id={`payment-${payment}`}
-                                label={payment}
+                                key={`type-${t}`}
+                                id={`type-${t}`}
+                                label={`${t}`}
                                 {...register(`payment.${i}`)}
-                                aria-labelledby="payment-legend"
                             />
+
                         ))}
-                    </fieldset>
+
+
+                    </FloatingLabel>
+
+
                 </FormGroup>
 
-                <Navbar expand="lg" variant="dark" bg="dark" fixed="bottom" aria-label="Form options">
+                <Navbar expand="lg" variant="dark" bg="dark" fixed="bottom" >
                     <Container>
                         <Navbar.Brand href="#">Opções do formulário</Navbar.Brand>
                         <div className={styles.botoes}>
-                            <Button variant="success" type="submit" aria-label="Salvar os dados do serviço">Gravar</Button>
-                            <Button variant="warning" onClick={() => reset()} aria-label="Limpar o formulário">Limpar</Button>
+                            <Button variant="success" type="submit">Gravar</Button>
+                            <Button variant="warning" onClick={() => reset()}>Limpar</Button>
                         </div>
                     </Container>
                 </Navbar>
+
             </Form>
+
+
         </div>
     );
-};
+}
