@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+
 import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
 import Navbar from 'react-bootstrap/Navbar';
@@ -9,6 +10,7 @@ import { FormGroup } from 'react-bootstrap';
 import * as zod from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
+
 import styles from './Cadastro.module.css';
 
 interface ICustomer {
@@ -34,55 +36,54 @@ interface IService {
     description: string;
 }
 
-// Extending NewCycleFormData to include an optional 'id' field
 const formValidationSchema = zod.object({
-    customer: zod.string().uuid().nonempty({ message: "Selecione um cliente" }),
-    description: zod.string().nonempty({ message: "A descrição é obrigatória" }),
-    value: zod.number().min(0, { message: "O valor deve ser um número positivo" }),
-    type: zod.array(zod.boolean()),
-    payment: zod.array(zod.boolean()),
-    id: zod.string().optional(),
-});
+    customer: zod.string().uuid(),
+    description: zod.string(),
+    value: zod.any(),
+    type: zod.boolean().array(),
+    payment: zod.boolean().array()
+})
 
-type NewCycleFormData = zod.infer<typeof formValidationSchema>;
+type NewCycleFormData = zod.infer<typeof formValidationSchema>
 
 const apiUrl = import.meta.env.VITE_REACT_APP_API_URL;
 
 export const EditarService = () => {
+
     const [types, setTypes] = useState<IType[]>([]);
     const [customers, setCustomers] = useState<ICustomer[]>([]);
     const payments = ["Cartão de Crédito", "Cartão de Débito", "Dinheiro", "Pix"];
     const [show, setShow] = useState(false);
-    const [serviceId, setServiceId] = useState<string>('');
-
+    const [serviceId, setServiceId] = useState('');
     const handleShow = () => setShow(true);
     const handleClose = () => setShow(false);
 
-    const { register, handleSubmit, setValue, reset } = useForm<NewCycleFormData>({
+    const { register, handleSubmit, watch, reset, setValue } = useForm<NewCycleFormData>({
         resolver: zodResolver(formValidationSchema),
         defaultValues: {
             customer: '-1',
             value: 0,
             description: '',
-            type: [],
-            payment: []
+            type: [] as boolean[],
+            payment: [] as boolean[]
         },
     });
 
     useEffect(() => {
+
         fetch(`${apiUrl}/type`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json'
             }
         }).then(async (response) => {
-            if (response.ok) {
+            if (response.status >= 200 && response.status < 300) {
                 const json = await response.json();
                 setTypes(json);
             } else {
-                console.error('Failed to fetch types');
+                console.log('response');
             }
-        }).catch(err => console.error('Error fetching types:', err));
+        }).catch(err => err);
 
         fetch(`${apiUrl}/customer`, {
             method: 'GET',
@@ -90,155 +91,184 @@ export const EditarService = () => {
                 'Content-Type': 'application/json'
             }
         }).then(async (response) => {
-            if (response.ok) {
+            if (response.status >= 200 && response.status < 300) {
                 const json = await response.json();
                 setCustomers(json);
             } else {
-                console.error('Failed to fetch customers');
+                console.log('response');
             }
-        }).catch(err => console.error('Error fetching customers:', err));
+        }).catch(err => err);
+
     }, []);
 
     useEffect(() => {
+
         const queryString = window.location.search;
         const urlParams = new URLSearchParams(queryString);
-        const id = urlParams.get('id') ?? '';
-        setServiceId(id);
-
+        const id = urlParams.get('id');
+        setServiceId(String(id));
         fetch(`${apiUrl}/service/id/${id}`)
             .then(response => response.json())
             .then(async (data: IService) => {
                 setValue('description', data.description);
                 setValue('value', data.value);
 
-                const arrayType = types.map((t: IType) => data.type.includes(t.title));
+                const arrayType: boolean[] = types.map((t: IType) => {
+                    if (data.type.includes(t.title))
+                        return true;
+                    return false;
+                });
                 setValue('type', arrayType);
 
-                const arrayPayment = payments.map((p: string) => data.payment.includes(p));
+                const arrayPayment: boolean[] = payments.map((p: string) => {
+                    if (data.payment.includes(p))
+                        return true;
+                    return false;
+                });
                 setValue('payment', arrayPayment);
+
                 setValue('customer', data.customer.id);
+
+
+
             })
-            .catch(err => console.error('Error fetching service:', err));
+            .catch(err => err);
     }, [customers, types]);
 
-    const onSubmit = (data: NewCycleFormData) => {
-        // Explicitly add the 'id' to the data object
-        const updatedData = { ...data, id: serviceId };
+    const onSubmit = (data: any) => {
+
+        data.id = serviceId;
+
+        console.log(JSON.stringify(data));
 
         fetch(`${apiUrl}/service`, {
             method: 'PUT',
-            body: JSON.stringify(updatedData),
+            body: JSON.stringify(data),
             headers: {
                 'Content-Type': 'application/json'
             }
         }).then(response => {
-            if (response.ok) {
+            if (response.status >= 200 && response.status < 300) {
+                console.log(response);
                 handleShow();
+                return response;
+
             } else {
-                console.error('Failed to update service');
+                console.log('Não foi possível atualizar serviço');
             }
-        }).catch(err => console.error('Error updating service:', err));
-    };
+        }).catch(err => err);
+    }
 
     return (
         <div className={styles.main}>
-            <Modal
-                show={show}
-                onHide={handleClose}
-                aria-labelledby="success-modal-title"
-                aria-describedby="success-modal-description"
-            >
+            <Modal show={show} onHide={handleClose}>
                 <Modal.Header closeButton>
-                    <Modal.Title id="success-modal-title">Serviço cadastrado com sucesso!</Modal.Title>
+                    <Modal.Title>Serviço cadastrado com sucesso!</Modal.Title>
                 </Modal.Header>
-                <Modal.Body id="success-modal-description">
-                    Para ver os serviços cadastrados vamos em <strong>Serviço - Listar</strong>...
-                </Modal.Body>
+                <Modal.Body>Para ver os serviços cadastrados vamos em <strong>Serviço - Listar</strong>...</Modal.Body>
                 <Modal.Footer>
                     <Button href="/listar_servico" variant="success" onClick={handleClose}>
                         Concluir
                     </Button>
                 </Modal.Footer>
             </Modal>
-
-            <Form onSubmit={handleSubmit(onSubmit)} aria-labelledby="form-title">
-                <h1 id="form-title">Editar Serviço</h1>
+            <Form onSubmit={handleSubmit(onSubmit)}>
                 <FormGroup className={styles.group}>
-                    <FloatingLabel controlId="customerInput" label="Cliente" className="mb-3">
-                        <Form.Select
-                            {...register('customer')}
-                            aria-required="true"
-                            aria-label="Selecione o cliente para o serviço"
-                        >
-                            <option value="-1">Selecione um Cliente</option>
+                    <h4>Selecione o Cliente</h4>
+                    <FloatingLabel
+                        controlId="floatingInput"
+                        label="Cliente"
+                        className="mb-3"
+
+                    >
+                        <Form.Select {...register('customer')} >
+                            <option value={"-1"}>Selecione um Cliente</option>
                             {customers.map((c: ICustomer) => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
+                                <option id={c.id} key={c.id} value={c.id}>{c.name}</option>
                             ))}
                         </Form.Select>
                     </FloatingLabel>
 
-                    <fieldset className="mb-3">
-                        <legend>Selecione o Tipo do Serviço</legend>
-                        {types.map((t: IType, i: number) => (
+                    <h4>Selecione o Tipo do serviço</h4>
+                    <FloatingLabel
+                        controlId="floatingInput"
+                        label=""
+                        className="mb-3"
+
+                    >
+                        {types.map((t: IType, i) => (
                             <Form.Check
                                 inline
                                 type="checkbox"
                                 key={`type-${t.id}`}
                                 id={`type-${t.id}`}
-                                label={t.title}
+                                label={`${t.title}`}
                                 {...register(`type.${i}`)}
-                                aria-labelledby={`type-${t.id}`}
                             />
+
                         ))}
-                    </fieldset>
-
-                    <FloatingLabel controlId="valueInput" label="Valor do Serviço (R$)" className="mb-3">
-                        <Form.Control
-                            type="number"
-                            min="0.00"
-                            max="10000.00"
-                            step="0.01"
-                            {...register('value')}
-                            aria-required="true"
-                            aria-label="Informe o valor do serviço"
-                        />
                     </FloatingLabel>
 
-                    <FloatingLabel controlId="descriptionInput" label="Descrição do Serviço" className="mb-3">
-                        <Form.Control
-                            type="text"
-                            {...register('description')}
-                            aria-required="true"
-                            aria-label="Informe a descrição do serviço"
-                        />
+                    <h4>Valor do Serviço</h4>
+                    <FloatingLabel
+                        controlId="floatingInput"
+                        label="Valor do Serviço (R$)"
+                        className="mb-3"
+
+                    >
+                        <Form.Control type="number" min="0.00" max="10000.00" step="0.01" {...register("value")} />
                     </FloatingLabel>
 
-                    <fieldset className="mb-3">
-                        <legend>Forma de Pagamento</legend>
-                        {payments.map((p, i: number) => (
+                    <h4>Descrição do Serviço</h4>
+                    <FloatingLabel
+                        controlId="floatingInput"
+                        label="Descrição do Serviço"
+                        className="mb-3"
+
+                    >
+                        <Form.Control type="text" {...register("description")} />
+                    </FloatingLabel>
+
+
+                    <h4>Forma de Pagamento</h4>
+                    <FloatingLabel
+                        controlId="floatingInput"
+                        label=""
+                        className="mb-3"
+
+                    >
+
+                        {payments.map((t, i) => (
                             <Form.Check
                                 inline
                                 type="checkbox"
-                                key={`payment-${p}`}
-                                id={`payment-${p}`}
-                                label={p}
+                                key={`type-${t}`}
+                                id={`type-${t}`}
+                                label={`${t}`}
                                 {...register(`payment.${i}`)}
-                                aria-labelledby={`payment-${p}`}
                             />
+
                         ))}
-                    </fieldset>
+
+
+                    </FloatingLabel>
+
+
                 </FormGroup>
 
-                <Navbar expand="lg" variant="dark" bg="dark" fixed="bottom" aria-label="Form options">
+                <Navbar expand="lg" variant="dark" bg="dark" fixed="bottom" >
                     <Container>
                         <Navbar.Brand href="#">Opções do formulário</Navbar.Brand>
                         <div className={styles.botoes}>
-                            <Button variant="success" type="submit" aria-label="Salvar as alterações do serviço">Gravar</Button>
-                            <Button variant="warning" onClick={() => reset()} aria-label="Limpar o formulário">Limpar</Button>
+                            <Button variant="success" type="submit">Gravar</Button>
+                            <Button variant="warning" onClick={() => reset()}>Limpar</Button>
                         </div>
                     </Container>
                 </Navbar>
+
             </Form>
+
+
         </div>
     );
-};
+}
