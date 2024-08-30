@@ -1,0 +1,11 @@
+.header {
+    height: 8.5rem;
+    background: var(--opal);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.header img {
+    width: 6rem;
+}

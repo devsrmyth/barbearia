@@ -1,0 +1,12 @@
+.home {
+    padding: 0.2rem;
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.home img {
+    height: 25rem;
+    object-fit: cover;
+}

@@ -1,0 +1,83 @@
+.form {
+    width: 100%;
+    background-color: #4ea8dea1;
+    padding: 1rem;
+}
+
+.formNaoTolerados {
+    width: 100%;
+    background-color: #e258588c;
+    padding: 1rem;
+}
+
+.formPaciente {
+    width: 100%;
+    background-color: #09986f8f;
+    padding: 0.5rem;
+    display: flex;
+}
+
+.checkbox {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+}
+
+@media (max-width: 600px) {
+    .checkbox {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+    }
+}
+
+.header {
+    background: var(--blue-400);
+    padding: 2rem;
+    color: var(--white);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.headerPaciente {
+    background: #09986F;
+    padding: 2rem;
+    color: var(--white);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.headerNaoTolerados {
+    background: var(--danger);
+    padding: 2rem;
+    color: var(--white);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.group {
+    padding: 1rem;
+    margin: 1rem 1rem 1rem 1rem;
+    border: 1px solid var(--gray-300);
+}
+
+.group+.group {
+    margin-top: 1rem;
+}
+
+.group h4 {
+    margin-bottom: 2rem;
+}
+
+.main {
+    margin-bottom: 5rem;
+}
+
+.botoes {
+    display: flex;
+    gap: 0.5rem;
+}
