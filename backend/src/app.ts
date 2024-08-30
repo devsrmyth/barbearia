@@ -16,7 +16,10 @@ const app = express();
 
 app.use(express.json());
 
-app.use(cors({}));
+app.use(cors({
+    origin: 'http://frontend:3000',
+    credentials: true, 
+}));
 
 app.use(costumerRoutes);
 app.use(typeRoutes);
