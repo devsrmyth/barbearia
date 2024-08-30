@@ -1,4 +1,5 @@
 import { useState } from 'react';
+
 import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
 import Navbar from 'react-bootstrap/Navbar';
@@ -13,16 +14,15 @@ import { useForm } from 'react-hook-form';
 import styles from './Cadastro.module.css';
 
 const formValidationSchema = zod.object({
-    isIncoming: zod.boolean(),
-    description: zod.string().nonempty({ message: 'A descrição é obrigatória' }),
-    value: zod.number().min(0, { message: 'O valor deve ser positivo' }),
-});
+    isIncoming: zod.any(),
+    description: zod.string(),
+    value: zod.any()
+})
 
-type NewCycleFormData = zod.infer<typeof formValidationSchema>;
-
-const apiUrl = import.meta.env.VITE_REACT_APP_API_URL;
+type NewCycleFormData = zod.infer<typeof formValidationSchema>
 
 export const CadastroRegistro = () => {
+
     const [show, setShow] = useState(false);
 
     const handleShow = () => setShow(true);
@@ -32,114 +32,112 @@ export const CadastroRegistro = () => {
     const { register, handleSubmit, watch, reset } = useForm<NewCycleFormData>({
         resolver: zodResolver(formValidationSchema),
         defaultValues: {
-            isIncoming: true,
+            isIncoming: 1,
             description: '',
-            value: 0,
+            value: 0
         },
-    });
+    })
 
     const onSubmit = (data: any) => {
-        fetch(`${apiUrl}/register`, {
+
+        if (data.isIncoming === -1)
+            data.isIncoming = false;
+        else
+            data.isIncoming = true;
+
+        fetch('http://localhost:3333/register', {
             method: 'POST',
             body: JSON.stringify(data),
             headers: {
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(response => {
-                if (response.status >= 200 && response.status < 300) {
-                    console.log(response);
-                    handleShow();
-                    return response;
-                }
-            })
-            .catch(err => err);
-    };
+                'Content-Type': 'application/json'
+            }
+        }).then(response => {
+            if (response.status >= 200 && response.status < 300) {
+                console.log(response);
+                handleShow();
+                return response;
+            }
+        }).catch(err => err);
+    }
 
     return (
         <div className={styles.main}>
-            <Modal
-                show={show}
-                onHide={handleClose}
-                aria-labelledby="success-modal-title"
-                aria-describedby="success-modal-description"
-            >
+            <Modal show={show} onHide={handleClose}>
                 <Modal.Header closeButton>
-                    <Modal.Title id="success-modal-title">Registro cadastrado com sucesso!</Modal.Title>
+                    <Modal.Title>Registro cadastrado com sucesso!</Modal.Title>
                 </Modal.Header>
-                <Modal.Body id="success-modal-description">
-                    Agora, caso deseje visualizar Registros cadastrados, vá ao menu <strong>Registro - Listar</strong>...
-                </Modal.Body>
+                <Modal.Body>Agora, caso deseje visualizar Registros cadastrados, vá ao menu <strong>Registro - Listar</strong>...</Modal.Body>
                 <Modal.Footer>
                     <Button href="/listar_registro" variant="success" onClick={handleClose}>
                         Concluir
                     </Button>
                 </Modal.Footer>
             </Modal>
-
-            <Form onSubmit={handleSubmit(onSubmit)} aria-labelledby="form-title">
-                <h1 id="form-title">Cadastro de Registro</h1>
+            <Form onSubmit={handleSubmit(onSubmit)}>
                 <FormGroup className={styles.group}>
-                    <fieldset className="mb-3">
-                        <legend id="tipo-registro-legend">Tipo do Registro</legend>
-                        <div>
-                            <Form.Check
-                                inline
-                                type="radio"
-                                label="Entrada"
-                                value="true"
-                                defaultChecked
-                                {...register('isIncoming')}
-                                aria-labelledby="tipo-registro-legend"
-                            />
-                            <Form.Check
-                                inline
-                                type="radio"
-                                label="Saída"
-                                value="false"
-                                {...register('isIncoming')}
-                                aria-labelledby="tipo-registro-legend"
-                            />
-                        </div>
-                    </fieldset>
-                    <FloatingLabel controlId="descriptionInput" label="Descrição do Registro" className="mb-3">
-                        <Form.Control
-                            as="textarea"
-                            rows={5}
-                            {...register('description')}
-                            aria-required="true"
-                            aria-describedby="description-help-text"
+                    <h4>Tipo do Registro</h4>
+                    <FloatingLabel
+                        controlId="floatingInput"
+                        label=""
+                        className="mb-3"
+
+                    >
+                        <Form.Check
+                            inline
+                            isValid
+                            defaultChecked
+                            type="radio"
+                            label={`Entrada`}
+                            value={1}
+                            {...register('isIncoming')}
                         />
-                        <div id="description-help-text" className="form-text">
-                            Informe uma descrição detalhada para o registro.
-                        </div>
+
+                        <Form.Check
+                            inline
+                            isInvalid
+                            type="radio"
+                            label={`Saída`}
+                            value={-1}
+                            {...register('isIncoming')}
+                        />
+
+                    </FloatingLabel>
+                    <h4>Descrição do Registro</h4>
+                    <FloatingLabel
+                        controlId="floatingInput"
+                        label="Descrição"
+                        className="mb-3"
+
+                    >
+                        <Form.Control as="textarea" rows={5} {...register('description')} />
                     </FloatingLabel>
 
-                    <FloatingLabel controlId="valueInput" label="Valor do Registro (R$)" className="mb-3" onFocus={handleFocus}>
-                        <Form.Control
-                            type="number"
-                            min="0.00"
-                            step="0.01"
-                            {...register('value')}
-                            aria-required="true"
-                            aria-describedby="value-help-text"
-                        />
-                        <div id="value-help-text" className="form-text">
-                            Informe o valor do registro em reais.
-                        </div>
+                    <h4>Valor do Registro</h4>
+                    <FloatingLabel
+                        controlId="floatingInput"
+                        label="Valor do Registro (R$)"
+                        className="mb-3"
+                        onFocus={handleFocus}
+
+                    >
+                        <Form.Control type="number" min="0.00" step="0.01" {...register("value")} />
                     </FloatingLabel>
+
                 </FormGroup>
 
-                <Navbar expand="lg" variant="dark" bg="dark" fixed="bottom" aria-label="Form options">
+                <Navbar expand="lg" variant="dark" bg="dark" fixed="bottom" >
                     <Container>
                         <Navbar.Brand href="#">Opções do formulário</Navbar.Brand>
                         <div className={styles.botoes}>
-                            <Button variant="success" type="submit" aria-label="Salvar os dados do registro">Gravar</Button>
-                            <Button type="reset" variant="warning" aria-label="Limpar o formulário">Limpar</Button>
+                            <Button variant="success" type="submit">Gravar</Button>
+                            <Button type="reset" variant="warning">Limpar</Button>
                         </div>
                     </Container>
                 </Navbar>
+
             </Form>
+
+
         </div>
     );
-};
+}
