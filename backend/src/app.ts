@@ -16,18 +16,7 @@ const app = express();
 
 app.use(express.json());
 
-const allowedOrigins = ['http://frontend:3000', 'http://3.22.224.105:3000'];
-
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: false,
-}));
+app.use(cors({}));
 
 app.use(costumerRoutes);
 app.use(typeRoutes);
