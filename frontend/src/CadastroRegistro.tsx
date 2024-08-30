@@ -21,6 +21,8 @@ const formValidationSchema = zod.object({
 
 type NewCycleFormData = zod.infer<typeof formValidationSchema>
 
+const apiUrl = import.meta.env.VITE_REACT_APP_API_URL;
+
 export const CadastroRegistro = () => {
 
     const [show, setShow] = useState(false);
@@ -45,7 +47,7 @@ export const CadastroRegistro = () => {
         else
             data.isIncoming = true;
 
-        fetch('http://localhost:3333/register', {
+        fetch(`${apiUrl}/register`, {
             method: 'POST',
             body: JSON.stringify(data),
             headers: {
