@@ -4,14 +4,13 @@ import Navbar from 'react-bootstrap/Navbar';
 import Container from 'react-bootstrap/Container';
 import FormGroup from 'react-bootstrap/FormGroup';
 import FloatingLabel from 'react-bootstrap/FloatingLabel';
+import { format } from 'date-fns';
 import Form from 'react-bootstrap/Form';
 import Badge from 'react-bootstrap/Badge';
-import Alert from 'react-bootstrap/Alert';
 
 import styles from './Listagem.module.css';
 
 import dayjs from 'dayjs';
-import { format } from 'date-fns';
 import { formatToBRL } from 'brazilian-values';
 
 interface IRegister {
@@ -25,63 +24,68 @@ interface IRegister {
 const apiUrl = import.meta.env.VITE_REACT_APP_API_URL;
 
 export const RelatorioRegistro = () => {
-    const [registers, setRegisters] = useState<IRegister[]>([]);
-    const [dataInicio, setDataInicio] = useState(() => format(dayjs().subtract(2, 'day').toDate(), 'yyyy-MM-dd'));
-    const [dataFim, setDataFim] = useState(() => format(dayjs().add(1, 'day').toDate(), 'yyyy-MM-dd'));
+
+    const [registers, setRegisters] = useState([]);
+
+    const today = new Date();
+    const end = new Date();
+    today.setDate(today.getDate() - 2);
+    end.setDate(end.getDate() + 1);
+    const formattedDateToday = format(today, 'yyyy-MM-dd');
+    const formattedDateEnd = format(end, 'yyyy-MM-dd');
+
+    const [dataInicio, setDataInicio] = useState(formattedDateToday);
+    const [dataFim, setDataFim] = useState(formattedDateEnd);
+
+
     const [totalSaida, setTotalSaida] = useState(0);
     const [totalEntrada, setTotalEntrada] = useState(0);
-    const [error, setError] = useState<string | null>(null);
+
 
     useEffect(() => {
-        const fetchRegisters = async () => {
-            try {
-                const response = await fetch(`${apiUrl}/register/${dataInicio}/${dataFim}`);
-                if (!response.ok) throw new Error('Erro ao buscar registros');
-                const data = await response.json();
+
+        fetch(`${apiUrl}/register/${dataInicio}/${dataFim}`)
+            .then(response => response.json())
+            .then(data => {
                 setRegisters(data);
                 setTotalSaida(data.filter((r: IRegister) => !r.isIncoming).reduce((sum: number, v: IRegister) => sum + Number(v.value), 0));
                 setTotalEntrada(data.filter((r: IRegister) => r.isIncoming).reduce((sum: number, v: IRegister) => sum + Number(v.value), 0));
-            } catch (error) {
-                setError('Ocorreu um erro ao buscar os registros.');
-            }
-        };
-        fetchRegisters();
+            })
+            .catch((error) => console.log(error));
+
     }, [dataInicio, dataFim]);
 
     const handleOnChangeDataInicio = (e: React.ChangeEvent<HTMLInputElement>) => {
         setDataInicio(e.target.value);
-    };
+    }
 
     const handleOnChangeDataFim = (e: React.ChangeEvent<HTMLInputElement>) => {
         setDataFim(e.target.value);
-    };
+    }
 
-    const badgeIsEntrada = (isIncoming: boolean) => isIncoming ? 'success' : 'danger';
+    const badgeIsEntrada = (e: boolean) => e ? 'success' : 'danger';
 
     return (
         <div className={styles.table}>
-            {error && <Alert variant="danger" onClose={() => setError(null)} dismissible>{error}</Alert>}
             <FormGroup>
                 <h4>Busca por intervalo de Data</h4>
-                <FloatingLabel controlId="dataInicioInput" label="De" className="mb-3">
-                    <Form.Control
-                        type="date"
-                        value={dataInicio}
-                        onChange={handleOnChangeDataInicio}
-                        aria-label="Data de início"
-                    />
+                <FloatingLabel
+                    controlId="floatingInput"
+                    label="De"
+                    className="mb-3"
+                >
+                    <Form.Control type="date" value={dataInicio} onChange={handleOnChangeDataInicio} />
                 </FloatingLabel>
 
-                <FloatingLabel controlId="dataFimInput" label="Até" className="mb-3">
-                    <Form.Control
-                        type="date"
-                        value={dataFim}
-                        onChange={handleOnChangeDataFim}
-                        aria-label="Data de fim"
-                    />
+                <FloatingLabel
+                    controlId="floatingInput"
+                    label="Até"
+                    className="mb-3"
+                >
+                    <Form.Control type="date" value={dataFim} onChange={handleOnChangeDataFim} />
                 </FloatingLabel>
             </FormGroup>
-            <Table striped bordered hover aria-label="Relatório de registros financeiros">
+            <Table striped bordered hover>
                 <thead>
                     <tr>
                         <th>Categoria</th>
@@ -91,23 +95,18 @@ export const RelatorioRegistro = () => {
                     </tr>
                 </thead>
                 <tbody>
-                    {registers.length > 0 ? (
-                        registers.map((r: IRegister) => (
-                            <tr key={r.id}>
-                                <td><Badge pill bg={badgeIsEntrada(r.isIncoming)}>{r.isIncoming ? "Entrada" : "Saída"}</Badge></td>
-                                <td>{formatToBRL(r.value)}</td>
-                                <td>{r.description}</td>
-                                <td>{dayjs(r.date).format('DD/MM/YYYY')}</td>
-                            </tr>
-                        ))
-                    ) : (
-                        <tr>
-                            <td colSpan={4} className="text-center">Nenhum registro encontrado.</td>
+                    {registers?.length > 0 && registers.map((r: IRegister) => (
+                        <tr key={r.id}>
+                            <td><Badge pill bg={badgeIsEntrada(r.isIncoming)}>{r.isIncoming ? "Entrada" : "Saída"}</Badge>{' '}</td>
+                            <td>{formatToBRL(r.value)}</td>
+                            <td>{r.description}</td>
+                            <td>{dayjs(r.date).format('DD/MM/YYYY')}</td>
                         </tr>
-                    )}
+                    ))}
+
                 </tbody>
             </Table>
-            <Navbar expand="lg" variant="dark" bg="dark" fixed="bottom" aria-label="Resumo financeiro">
+            <Navbar expand="lg" variant="dark" bg="dark" fixed="bottom" >
                 <Container>
                     <Navbar.Brand href="#">
                         Total registrado de Entradas/Saídas entre {dayjs(dataInicio).format('DD/MM/YYYY')} e {dayjs(dataFim).format('DD/MM/YYYY')}:
@@ -131,6 +130,7 @@ export const RelatorioRegistro = () => {
                     </div>
                 </Container>
             </Navbar>
-        </div>
+        </div >
+
     );
-};
+}

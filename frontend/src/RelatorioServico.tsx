@@ -4,14 +4,13 @@ import FormGroup from 'react-bootstrap/FormGroup';
 import FloatingLabel from 'react-bootstrap/FloatingLabel';
 import Form from 'react-bootstrap/Form';
 import Badge from 'react-bootstrap/Badge';
-import Navbar from 'react-bootstrap/Navbar';
-import Container from 'react-bootstrap/Container';
 
 import styles from './Listagem.module.css';
 
 import dayjs from 'dayjs';
 import { format } from 'date-fns';
 import { formatToBRL } from 'brazilian-values';
+import { Container, Navbar } from 'react-bootstrap';
 
 interface ICustomer {
     name: string;
@@ -28,7 +27,6 @@ interface IService {
 
 const convertBRLToUSD = async (amountInBRL: number): Promise<number | null> => {
     const BASE_URL = 'https://open.er-api.com/v6/latest/USD';
-
     try {
         const response = await fetch(BASE_URL);
         const data = await response.json();
@@ -49,8 +47,9 @@ const convertBRLToUSD = async (amountInBRL: number): Promise<number | null> => {
 const apiUrl = import.meta.env.VITE_REACT_APP_API_URL;
 
 export const RelatorioServico = () => {
-    const [searchCustomerName, setSearchCustomerName] = useState('');
-    const [services, setServices] = useState<IService[]>([]);
+
+    const [searchCustomerName, setSearchCustomerName] = useState("");
+    const [services, setServices] = useState([] as IService[]);
     const [total, setTotal] = useState(0);
     const [convertedValue, setConvertedValue] = useState<number | null>(null);
     const [rate, setRate] = useState<number | null>(null);
@@ -65,18 +64,6 @@ export const RelatorioServico = () => {
     const [dataInicio, setDataInicio] = useState(formattedDateToday);
     const [dataFim, setDataFim] = useState(formattedDateEnd);
 
-    const handleOnChangeSearchCustomerName = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setSearchCustomerName(e.target.value);
-    };
-
-    const handleOnChangeDataInicio = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setDataInicio(e.target.value);
-    };
-
-    const handleOnChangeDataFim = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setDataFim(e.target.value);
-    };
-
     useEffect(() => {
         const fetchRate = async () => {
             const currentRate = await convertBRLToUSD(1);
@@ -88,61 +75,66 @@ export const RelatorioServico = () => {
     }, []);
 
     useEffect(() => {
-        const fetchServices = async () => {
-            try {
-                const response = await fetch(`${apiUrl}/service?customerName=${searchCustomerName}&start=${dataInicio}&end=${dataFim}`);
-                const data = await response.json();
+        fetch(`${apiUrl}/service/${dataInicio}/${dataFim}/?name=${searchCustomerName}`)
+            .then(response => response.json())
+            .then(data => {
                 setServices(data);
-                setTotal(data.reduce((sum: number, service: IService) => sum + service.value, 0));
-            } catch (error) {
-                console.error('Error fetching services:', error);
-            }
-        };
-        fetchServices();
+                setTotal(data.reduce((sum: number, v: IService) => sum + Number(v.value), 0));
+            })
+            .catch((error) => console.log(error));
     }, [searchCustomerName, dataInicio, dataFim]);
 
-    useEffect(() => {
-        if (rate !== null) {
-            setConvertedValue(total * rate);
-        }
-    }, [total, rate]);
+    const handleOnChangeSearchCustomerName = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setSearchCustomerName(e.target.value);
+    }
+
+    const handleOnChangeDataInicio = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setDataInicio(e.target.value);
+    }
+
+    const handleOnChangeDataFim = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setDataFim(e.target.value);
+    }
 
     const objStrToStr = (s: string, v: string[]) => {
-        return s.replaceAll('"', '').replace('{', '').replace('}', '').split(',').join(', ');
-    };
+        var properties = s.replaceAll("\"", "").replace("{", "").replace("}", "");
+        let a_p = properties.split(',');
+        a_p.forEach(function (property: string) {
+            v.push(property);
+        });
+        return v;
+    }
 
     return (
         <div className={styles.table}>
             <FormGroup>
                 <h4>Busca por nome Cliente junto com data Serviço</h4>
-                <FloatingLabel controlId="floatingInput" label="Filtragem pelo nome Cliente" className="mb-3">
-                    <Form.Control
-                        type="text"
-                        value={searchCustomerName}
-                        onChange={handleOnChangeSearchCustomerName}
-                        aria-label="Filtragem pelo nome do cliente"
-                    />
+                <FloatingLabel
+                    controlId="floatingInput"
+                    label="Filtragem pelo nome Cliente"
+                    className="mb-3"
+                >
+                    <Form.Control type="text" value={searchCustomerName} onChange={handleOnChangeSearchCustomerName} />
                 </FloatingLabel>
 
-                <FloatingLabel controlId="floatingInput" label="De" className="mb-3">
-                    <Form.Control
-                        type="date"
-                        value={dataInicio}
-                        onChange={handleOnChangeDataInicio}
-                        aria-label="Data de início"
-                    />
+                <FloatingLabel
+                    controlId="floatingInput"
+                    label="De"
+                    className="mb-3"
+                >
+                    <Form.Control type="date" value={dataInicio} onChange={handleOnChangeDataInicio} />
                 </FloatingLabel>
 
-                <FloatingLabel controlId="floatingInput" label="Até" className="mb-3">
-                    <Form.Control
-                        type="date"
-                        value={dataFim}
-                        onChange={handleOnChangeDataFim}
-                        aria-label="Data de fim"
-                    />
+                <FloatingLabel
+                    controlId="floatingInput"
+                    label="Até"
+                    className="mb-3"
+                >
+                    <Form.Control type="date" value={dataFim} onChange={handleOnChangeDataFim} />
                 </FloatingLabel>
+
             </FormGroup>
-            <Table striped bordered hover aria-label="Relatório de serviços">
+            <Table striped bordered hover>
                 <thead>
                     <tr>
                         <th>Cliente</th>
@@ -153,28 +145,22 @@ export const RelatorioServico = () => {
                     </tr>
                 </thead>
                 <tbody>
-                    {services.length > 0 ? (
-                        services.map((s: IService) => (
-                            <tr key={s.id}>
-                                <td>{s.customer.name}</td>
-                                <td>{objStrToStr(s.type.toString(), [])}</td>
-                                <td>{objStrToStr(s.payment.toString(), [])}</td>
-                                <td>{formatToBRL(s.value)}</td>
-                                <td>{dayjs(s.date).format('DD/MM/YYYY')}</td>
-                            </tr>
-                        ))
-                    ) : (
-                        <tr>
-                            <td colSpan={5} className="text-center">
-                                Nenhum serviço encontrado.
-                            </td>
+                    {services?.length > 0 && services.map((s: IService) => (
+                        <tr key={s.id}>
+                            <td>{s.customer.name}</td>
+                            <td>{objStrToStr(s.type.toString(), []).join(', ')}</td>
+                            <td>{objStrToStr(s.payment.toString(), []).join(', ')}</td>
+                            <td>{formatToBRL(s.value)}</td>
+                            <td>{dayjs(s.date).format('DD/MM/YYYY')}</td>
                         </tr>
-                    )}
+                    ))}
                 </tbody>
             </Table>
-            <Navbar expand="lg" variant="dark" bg="dark" fixed="bottom" aria-label="Resumo de serviços">
+            <Navbar expand="lg" variant="dark" bg="dark" fixed="bottom" >
                 <Container>
-                    <Navbar.Brand>Total gasto por determinado(s) cliente(s):</Navbar.Brand>
+                    <Navbar.Brand href="#">
+                        Total gasto por determinado(s) cliente(s):
+                    </Navbar.Brand>
                     <div className={styles.botoes}>
                         <h3>
                             <Badge pill bg="success">
@@ -187,6 +173,6 @@ export const RelatorioServico = () => {
                     </div>
                 </Container>
             </Navbar>
-        </div>
+        </div >
     );
-};
+}
