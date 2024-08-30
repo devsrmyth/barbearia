@@ -5,7 +5,6 @@ import Button from 'react-bootstrap/Button';
 import FormGroup from 'react-bootstrap/FormGroup';
 import FloatingLabel from 'react-bootstrap/FloatingLabel';
 import Form from 'react-bootstrap/Form';
-import Alert from 'react-bootstrap/Alert';
 
 import styles from './Listagem.module.css';
 
@@ -30,116 +29,108 @@ interface IService {
 const apiUrl = import.meta.env.VITE_REACT_APP_API_URL;
 
 export const ListagemServico = () => {
+
+    const [show, setShow] = useState(false);
     const [showDelete, setShowDelete] = useState(false);
-    const [searchCustomerName, setSearchCustomerName] = useState('');
-    const [services, setServices] = useState<IService[]>([]);
-    const [error, setError] = useState<string | null>(null);
+    const [searchCustomerName, setSearchCustomerName] = useState("");
 
     const handleClose = () => {
+        setShow(false);
         setShowDelete(false);
-    };
+    }
+    const handleShow = () => {
+        setShow(true);
+        setShowDelete(true)
+    }
+
+    const [services, setServices] = useState([]);
+
 
     useEffect(() => {
-        const fetchServices = async () => {
-            try {
-                const response = await fetch(`${apiUrl}/service/${searchCustomerName}`);
-                if (!response.ok) throw new Error('Erro ao buscar serviços');
-                const data = await response.json();
-                setServices(data);
-            } catch (error) {
-                setError('Ocorreu um erro ao buscar os serviços.');
-            }
-        };
-        fetchServices();
+        fetch(`${apiUrl}/service/${searchCustomerName}`)
+            .then(response => response.json())
+            .then(data => setServices(data))
+            .catch((error) => console.log(error));
     }, [searchCustomerName]);
 
     const handleOnChangeSearchTypeTitle = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchCustomerName(e.target.value);
-    };
+    }
 
-    const handleOnClickDelete = async (id: string) => {
-        try {
-            const response = await fetch(`${apiUrl}/service/delete/${id}`, { method: 'DELETE' });
-            if (response.ok) {
-                setShowDelete(true);
-                setServices((prevServices) => prevServices.filter(service => service.id !== id));
-            } else {
-                throw new Error('Erro ao excluir serviço');
-            }
-        } catch (error) {
-            setError('Ocorreu um erro ao excluir o serviço.');
-        }
-    };
+
+    const objStrToStr = (s: string, v: string[]) => {
+        var properties = s.replaceAll("\"", "").replace("{", "").replace("}", "");
+        let a_p = properties.split(',');
+        a_p.forEach(function (property: string) {
+            v.push(property);
+        });
+        return v;
+    }
+
+    const handleOnClickDelete = (id: string) => {
+        fetch(`${apiUrl}/service/delete/${id}`)
+            .then(response => {
+                if (response.status === 200) {
+                    setShowDelete(true);
+                    const services_after_remove = [...services];
+                    services_after_remove.splice(services_after_remove.findIndex((v: IService) => v.id === id), 1);
+                    setServices(services_after_remove);
+                }
+            })
+            .catch((error) => console.log(error));
+    }
 
     return (
         <div className={styles.table}>
-            {error && <Alert variant="danger" onClose={() => setError(null)} dismissible>{error}</Alert>}
-            <Modal show={showDelete} onHide={handleClose} aria-labelledby="delete-modal-title">
+            <Modal show={showDelete} onHide={handleClose}>
                 <Modal.Header closeButton>
-                    <Modal.Title id="delete-modal-title">Serviço excluído com sucesso!</Modal.Title>
+                    <Modal.Title>Serviço excluído com sucesso!</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>Serviço foi removido da base de dados.</Modal.Body>
                 <Modal.Footer>
-                    <Button variant="success" onClick={handleClose} aria-label="Concluir exclusão">
+                    <Button variant="success" onClick={handleClose}>
                         Concluir
                     </Button>
                 </Modal.Footer>
             </Modal>
             <FormGroup>
                 <h4>Busca por nome Cliente</h4>
-                <FloatingLabel controlId="floatingInput" label="Filtragem pelo nome Cliente" className="mb-3">
-                    <Form.Control
-                        type="text"
-                        value={searchCustomerName}
-                        onChange={handleOnChangeSearchTypeTitle}
-                        placeholder="Digite o nome do cliente"
-                        aria-label="Filtrar serviços por nome do cliente"
-                    />
+                <FloatingLabel
+                    controlId="floatingInput"
+                    label="Filtragem pelo nome Cliente"
+                    className="mb-3"
+                >
+                    <Form.Control type="text" value={searchCustomerName} onChange={handleOnChangeSearchTypeTitle} />
                 </FloatingLabel>
             </FormGroup>
-            <Table striped bordered hover aria-label="Lista de serviços">
+            <Table striped bordered hover>
                 <thead>
                     <tr>
                         <th>Cliente</th>
                         <th>Tipos</th>
-                        <th>Forma de Pagamento</th>
+                        <th>Forma Pagamento</th>
                         <th>Valor</th>
                         <th>Data</th>
-                        <th>Opções</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {services.length > 0 ? (
-                        services.map((s: IService) => (
-                            <tr key={s.id}>
-                                <td>{s.customer.name}</td>
-                                <td>{s.type.join(', ')}</td>
-                                <td>{s.payment.join(', ')}</td>
-                                <td>{formatToBRL(s.value)}</td>
-                                <td>{dayjs(s.date).format('DD/MM/YYYY')}</td>
-                                <td>
-                                    <div className={styles.icones}>
-                                        <Button href={`editar_servico?id=${s.id}`} variant="warning" aria-label={`Editar serviço de ${s.customer.name}`}>
-                                            Editar <GrEdit size={20} />
-                                        </Button>
-                                        <Button
-                                            variant="danger"
-                                            onClick={() => handleOnClickDelete(s.id)}
-                                            aria-label={`Excluir serviço de ${s.customer.name}`}
-                                        >
-                                            Excluir <AiTwotoneDelete size={20} />
-                                        </Button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))
-                    ) : (
-                        <tr>
-                            <td colSpan={6} className="text-center">Nenhum serviço encontrado.</td>
+                    {services?.length > 0 && services.map((s: IService) => (
+                        <tr key={s.id}>
+                            <td>{s.customer.name}</td>
+                            <td>{objStrToStr(s.type.toString(), []).join(', ')}</td>
+                            <td>{objStrToStr(s.payment.toString(), []).join(', ')}</td>
+                            <td>{formatToBRL(s.value)}</td>
+                            <td>{dayjs(s.date).format('DD/MM/YYYY')}</td>
+                            <td>
+                                <div className={styles.icones}>
+                                    <Button href={`editar_servico?id=${s.id}`} variant="warning"> Editar <GrEdit size={20} /></Button>
+                                    <Button variant="danger" onClick={() => handleOnClickDelete(s.id)}> Excluir <AiTwotoneDelete size={20} /></Button>
+                                </div>
+                            </td>
                         </tr>
-                    )}
+                    ))}
                 </tbody>
             </Table>
-        </div>
+        </div >
     );
-};
+}
