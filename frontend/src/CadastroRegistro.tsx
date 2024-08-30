@@ -41,12 +41,10 @@ export const CadastroRegistro = () => {
     })
 
     const onSubmit = (data: any) => {
-
-        if (data.isIncoming === -1)
+        if (data.isIncoming == -1)
             data.isIncoming = false;
         else
             data.isIncoming = true;
-
         fetch(`${apiUrl}/register`, {
             method: 'POST',
             body: JSON.stringify(data),
